@@ -1,0 +1,32 @@
+= StashboxR
+
+Original name, I know. This gem will let you communicate with http://stashbox.org via Ruby.
+
+You can upload files and edit their metadata with either an anonymous or registered account. You can even delete files you own, should you so desire!
+
+== Usage
+
+  s = Stashboxr::File.new("http://stashbox.org/922233/5.jpg")
+  # => <Stash: 5.jpg (public)>
+  s.title
+  # => nil
+  s.title = "Not my file"
+  # RuntimeError: You don't have permission to edit this file
+  s = Stashboxr::File.upload("a textfile.txt")
+  # RuntimeError: The upload wasn't allowed because 'Anonymous users are restricted to image uploads..'
+  Stashboxr.login("myusername","mypassword")
+  # => true
+  s = Stashboxr::File.upload("textfile.txt")
+  # => <Stash: textfile.txt>
+  s.tags = ["one","spaces won't go thru","a4"]
+  # => ["one","spaces_won_t_go_thru","a4"]
+  s.add_tag("hello")
+  # => ["one","spaces_won_t_go_thru","a4","hello"]
+
+  Stashboxr.search("a4")
+  # => [<Stash: textfile.txt>]
+
+== Todo
+
+* Add the feature to input a know code for a specific file so it can be edited at a later date
+* Figure out why the know code isn't returned when the API is used to upload a file

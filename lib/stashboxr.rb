@@ -84,11 +84,11 @@ class Stashboxr
       })
       body = Nokogiri::XML(res.body)
       
-      case res.code.to_i
-      when 200
+      reason = body.search('//error').inner_text rescue nil
+      
+      if reason.nil?
         new(body.search('//url').inner_text)
       else
-        reason = body.search('//error').inner_text rescue nil
         raise RuntimeError, "The upload wasn't allowed"<<((reason.nil?) ? "" : " because '#{reason}'")
       end
     end
@@ -128,6 +128,7 @@ class Stashboxr
       @tags = (tags + parse_tags(new_tags)).uniq
       @saved = false
       save if @autosave
+      @tags
     end
     alias :add_tags :add_tag
     
@@ -136,14 +137,16 @@ class Stashboxr
       @tags = (tags - parse_tags(new_tags)).uniq
       @saved = false
       save if @autosave
+      @tags
     end
     alias :remove_tags :remove_tag
     
     # Reset the tags for this file to the ones in the given array
-    def set_tags(new_tags)
+    def tags=(new_tags)
       @tags = parse_tags(new_tags)
       @saved = false
       save if @autosave
+      @tags
     end
     
     def title=(title)
@@ -195,9 +198,13 @@ class Stashboxr
     end
     
     def inspect
-      keys = [@public ? "public" : "private"]
-      keys.push("nsfw") if !@sfw and @metadata
-      "<Stash: #{@filename} (#{keys * ", "})>"
+      if @metadata
+        keys = [@public ? "public" : "private"]
+        keys.push("nsfw") if !@sfw
+        "<Stash: #{@filename} (#{keys * ", "})>"
+      else
+        "<Stash: #{@filename}>"
+      end
     end
     
     # Grab metadata from stashbox.org
@@ -245,7 +252,7 @@ class Stashboxr
     private
     def parse_tags(new_tags)
       [new_tags].flatten.collect do |tag|
-        tag.downcase.gsub(/[^a-z0-9_-]/,"")
+        tag.downcase.gsub(/[^a-z0-9_-]+/,"_")
         tag = nil if tag.empty?
       end.compact.uniq
     end
