@@ -36,7 +36,7 @@ class Stashboxr
   
   # Is someone logged in?
   def self.loggedin?
-    !@@username.nil?
+    !@@username.nil? rescue false
   end
   
   # Username of current logged in user (nil if not logged in)
