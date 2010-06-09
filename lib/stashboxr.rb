@@ -188,7 +188,7 @@ class Stashboxr
       res = Agent.post("http://stashbox.org/manage_file/"<<@stashboxid,{
         :tags => @tags * " ",
         :meta_title => @title,
-        :meta_description => @details,
+        :meta_description => @description,
         :is_nsfw => !@sfw,
         :is_public => @public
       })
