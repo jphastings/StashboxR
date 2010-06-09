@@ -44,6 +44,14 @@ class Stashboxr
     @@username
   end
   
+  def self.autosave=(pref)
+    @@autosave = (pref == true)
+  end
+  
+  def self.autosave?
+    @@autosave rescue true
+  end
+  
   # Search stashbox.org - the site has this advice for formatting searches:
   #
   # You can use any number of terms in your search, all of which will be required in the results. You can also use the following search types (using "type:*the_type*" format): archives, audio, code, documents, images, movies
@@ -78,30 +86,32 @@ class Stashboxr
       # Upload the file
       res = Agent.post('http://stashbox.org/upload.php',{
         :upload_type => "local_file",
-        :wants_rss => 1,
         :file => open(local_file),
         :is_public => is_public
       })
-      body = Nokogiri::XML(res.body)
       
-      reason = body.search('//error').inner_text rescue nil
+      reason = res.search('//div[@class=\'error\']').inner_text
       
-      if reason.nil?
-        new(body.search('//url').inner_text)
+      if reason.empty?
+        new(res)
       else
         raise RuntimeError, "The upload wasn't allowed"<<((reason.nil?) ? "" : " because '#{reason}'")
       end
     end
     
     def initialize(url)
-      if (url =~ /(?:http:\/\/)?(?:stashbox\.org)?(?:\/v)?\/?([0-9]+\/(.+))$/)
+      
+      if (url.is_a? Mechanize::Page)
+        # We're being initialized with an information page (ie. an upload) make use of it!
+        refresh(url)
+      elsif (url =~ /(?:http:\/\/)?(?:stashbox\.org)?(?:\/v)?\/?([0-9]+\/(.+))$/)
         @stashboxid = $1
         @filename = $2
       else
         raise RuntimeError, "That isn't a valid stashbox URL"
       end
       
-      @autosave = true
+      @autosave = Stashboxr.autosave?
       @saved = true
     end
     
@@ -208,13 +218,16 @@ class Stashboxr
     end
     
     # Grab metadata from stashbox.org
-    def refresh
+    def refresh(doc = nil)
       # Get extended information
-      doc = Agent.get "http://stashbox.org/v/"<<@stashboxid
+      doc ||= Agent.get "http://stashbox.org/v/"<<@stashboxid
       
       doc.search("//div[@class='subsection']").each do |sub|
         value = sub.search("div[@class='value']").inner_text.strip
         case sub.search("div[@class='label']").inner_text
+        when "Filename"
+          @filename = value
+          @stashboxid = URI.parse(sub.search("div[@class='value']/a")[0]['href']).path[1..-1]
         when "Size"
           @size = value[/^(\d+\.\d+)\ ([K|M]?)B$/,1].to_f * SIZES[$2]
         when "Uploaded On"
@@ -252,8 +265,9 @@ class Stashboxr
     private
     def parse_tags(new_tags)
       [new_tags].flatten.collect do |tag|
-        tag.downcase.gsub(/[^a-z0-9_-]+/,"_")
+        tag = tag.downcase.gsub(/[^a-z0-9_-]+/,"_")
         tag = nil if tag.empty?
+        tag
       end.compact.uniq
     end
   end
