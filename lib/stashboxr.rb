@@ -198,6 +198,10 @@ class Stashboxr
       return res.code == "200"
     end
     
+    def download
+      Agent.get(url).body
+    end
+    
     # Delete this file (permanently!) from stashbox.org
     def delete
       res = Agent.post("http://stashbox.org/delete_upload/"<<@stashboxid)
