@@ -106,7 +106,7 @@ class Stashboxr
         refresh(url)
       elsif (url =~ /(?:http:\/\/)?(?:stashbox\.org)?(?:\/v)?\/?([0-9]+\/(.+))$/)
         @stashboxid = $1
-        @filename = $2
+        @filename = URI.decode($2)
       else
         raise RuntimeError, "That isn't a valid stashbox URL"
       end
